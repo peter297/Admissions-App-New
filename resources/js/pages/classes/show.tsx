@@ -1,4 +1,4 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,7 @@ import {
     DialogTitle,
 } from '@/components/ui/dialog';
 import ClassExportDialog from '@/components/class-export-dialog';
+import ClassImportDialog from '@/components/class-import-dialog';
 import { Input } from '@/components/ui/input';
 import {
     Select,
@@ -71,6 +72,8 @@ export default function ClassShow({
 }: Props) {
     const [search, setSearch] = useState('');
     const [exportOpen, setExportOpen] = useState(false);
+    const [importOpen, setImportOpen] = useState(false);
+    const { flash } = usePage<{ flash?: { success?: string } }>().props;
     const [status, setStatus] = useState('all');
 
     // Selected rows are stored as a list of enrollment ids.
@@ -145,6 +148,12 @@ export default function ClassShow({
             <Head title={classRoom.name} />
 
             <div className="flex flex-col gap-4 p-4">
+                {flash?.success && (
+                    <div className="rounded-md border border-green-600/30 bg-green-50 p-3 text-sm text-green-800 dark:bg-green-950 dark:text-green-200">
+                        {flash.success}
+                    </div>
+                )}
+
                 <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h1 className="text-xl font-semibold">{classRoom.name}</h1>
@@ -213,6 +222,12 @@ export default function ClassShow({
                     {isCurrentYear && (
                         <Button asChild variant="outline">
                             <Link href={`/classes/${classRoom.id}/learners/create`}>Add learner</Link>
+                        </Button>
+                    )}
+
+                    {isCurrentYear && (
+                        <Button variant="outline" onClick={() => setImportOpen(true)}>
+                            Import
                         </Button>
                     )}
                 </div>
@@ -292,6 +307,14 @@ export default function ClassShow({
                     </Table>
                 </div>
             </div>
+
+            {importOpen && (
+                <ClassImportDialog
+                    classId={classRoom.id}
+                    className={classRoom.name}
+                    onClose={() => setImportOpen(false)}
+                />
+            )}
 
             <ClassExportDialog
                 open={exportOpen}
