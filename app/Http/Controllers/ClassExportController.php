@@ -50,7 +50,7 @@ class ClassExportController extends Controller
             ->when($data['type'] === 'transport', fn ($q) => $q->where(
                 fn ($w) => $w->whereNotNull('bus_id')->orWhereNotNull('transport_route_id')
             ))
-            ->with(['learner', 'transportRoute:id,name', 'bus:id,number_plate', 'activities:id,name'])
+            ->with(['learner', 'classRoom.gradeLevel', 'classRoom.stream', 'transportRoute:id,name', 'bus:id,number_plate', 'activities:id,name'])
             ->get()
             ->sortBy(fn (Enrollment $e) => $e->learner->full_name)
             ->values();

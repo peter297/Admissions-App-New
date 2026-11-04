@@ -1,12 +1,14 @@
 <?php
 
+use App\Http\Controllers\AcademicYearController;
+use App\Http\Controllers\ClassExportController;
+use App\Http\Controllers\ClassImportController;
 use App\Http\Controllers\ClassRoomController;
 use App\Http\Controllers\LearnerController;
 use App\Http\Controllers\TransportController;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\ClassExportController;
-use App\Http\Controllers\ClassImportController;
-use App\Http\Controllers\AcademicYearController;
+use App\Http\Controllers\AlumniController;
+use App\Http\Controllers\AlumniExportController;
 
 Route::inertia('/', 'welcome')->name('home');
 
@@ -39,34 +41,39 @@ Route::middleware(['auth', 'verified'])->group(function () {
     });
 
     Route::get('classes/{classRoom}/export', ClassExportController::class)
-    ->middleware('permission:learners.export')
-    ->name('classes.export');
+        ->middleware('permission:learners.export')
+        ->name('classes.export');
 
     Route::get('learners/import-template', [ClassImportController::class, 'template'])
-    ->middleware('permission:learners.import')->name('learners.import-template');
-Route::post('classes/{classRoom}/import', [ClassImportController::class, 'store'])
-    ->middleware('permission:learners.import')->name('classes.import');
-
+        ->middleware('permission:learners.import')->name('learners.import-template');
+    Route::post('classes/{classRoom}/import', [ClassImportController::class, 'store'])
+        ->middleware('permission:learners.import')->name('classes.import');
 
     Route::middleware('permission:academic-years.manage')->group(function () {
-    Route::get('academic-years', [AcademicYearController::class, 'index'])->name('academic-years.index');
-    Route::post('academic-years', [AcademicYearController::class, 'store']);
-    Route::post('academic-years/rollover', [AcademicYearController::class, 'rollover']);
-    Route::post('academic-years/terms/{term}/current', [AcademicYearController::class, 'setTerm']);
-    Route::post('academic-years/{academicYear}/current', [AcademicYearController::class, 'setCurrent']);
-});
-
-});
-
-    Route::middleware('permission:transport.manage')->group(function () {
-        Route::post('transport/routes', [TransportController::class, 'storeRoute']);
-        Route::put('transport/routes/{transportRoute}', [TransportController::class, 'updateRoute']);
-        Route::delete('transport/routes/{transportRoute}', [TransportController::class, 'destroyRoute']);
-        Route::post('transport/buses', [TransportController::class, 'storeBus']);
-        Route::put('transport/buses/{bus}', [TransportController::class, 'updateBus']);
-        Route::delete('transport/buses/{bus}', [TransportController::class, 'destroyBus']);
+        Route::get('academic-years', [AcademicYearController::class, 'index'])->name('academic-years.index');
+        Route::post('academic-years', [AcademicYearController::class, 'store']);
+        Route::post('academic-years/rollover', [AcademicYearController::class, 'rollover']);
+        Route::post('academic-years/terms/{term}/current', [AcademicYearController::class, 'setTerm']);
+        Route::post('academic-years/{academicYear}/current', [AcademicYearController::class, 'setCurrent']);
     });
 
-    require __DIR__ . '/settings.php';
+Route::middleware('permission:alumni.view')->group(function () {
+    Route::get('alumni', [AlumniController::class, 'index'])->name('alumni.index');
+    Route::get('alumni/{academicYear}/{branch}', [AlumniController::class, 'show'])->name('alumni.show');
+    Route::get('alumni/{academicYear}/{branch}/export', AlumniExportController::class)
+        ->middleware('permission:learners.export')->name('alumni.export');
+});
 
 
+});
+
+Route::middleware('permission:transport.manage')->group(function () {
+    Route::post('transport/routes', [TransportController::class, 'storeRoute']);
+    Route::put('transport/routes/{transportRoute}', [TransportController::class, 'updateRoute']);
+    Route::delete('transport/routes/{transportRoute}', [TransportController::class, 'destroyRoute']);
+    Route::post('transport/buses', [TransportController::class, 'storeBus']);
+    Route::put('transport/buses/{bus}', [TransportController::class, 'updateBus']);
+    Route::delete('transport/buses/{bus}', [TransportController::class, 'destroyBus']);
+});
+
+require __DIR__ . '/settings.php';

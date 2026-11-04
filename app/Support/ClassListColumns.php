@@ -31,6 +31,10 @@ class ClassListColumns
                 'label' => 'Admission No.', 'option' => 'Admission No.',
                 'value' => fn (Enrollment $e) => $e->learner->admission_number,
             ],
+            'class' => [
+                'label' => 'Class', 'option' => 'Class',
+                'value' => fn (Enrollment $e) => $e->classRoom->name,
+            ],
             'citizenship' => [
                 'label' => 'Citizenship', 'option' => 'Citizenship',
                 'value' => fn (Enrollment $e) => $e->learner->nationality === 'citizen' ? 'Citizen' : 'Non citizen',

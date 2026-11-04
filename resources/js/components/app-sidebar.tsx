@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { BookOpen, FolderGit2, GraduationCap, LayoutGrid } from 'lucide-react';
+import { BookOpen, BusFront, FolderGit2, GraduationCap, LayoutGrid, UsersRound, BrainCog   } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -34,31 +34,37 @@ const mainNavItems: NavItem[] = [
       {
         title: 'Transport',
         href: '/transport',
-        icon: FolderGit2,
+        icon: BusFront,
     },
 
        {
         title: 'Academic Years',
         href: '/academic-years',
-        icon: GraduationCap,
+        icon: BrainCog,
+    },
+
+       {
+        title: 'Alumni',
+        href: '/alumni',
+        icon: UsersRound,
     }
 
-    
+
 
 
 ];
 
 const footerNavItems: NavItem[] = [
-    {
-        title: 'Repository',
-        href: 'https://github.com/laravel/react-starter-kit',
-        icon: FolderGit2,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#react',
-        icon: BookOpen,
-    },
+    // {
+    //     title: 'Repository',
+    //     href: 'https://github.com/laravel/react-starter-kit',
+    //     icon: FolderGit2,
+    // },
+    // {
+    //     title: 'Documentation',
+    //     href: 'https://laravel.com/docs/starter-kits#react',
+    //     icon: BookOpen,
+    // },
 ];
 
 export function AppSidebar() {
