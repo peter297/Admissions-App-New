@@ -9,11 +9,17 @@ use App\Http\Controllers\TransportController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AlumniController;
 use App\Http\Controllers\AlumniExportController;
+use App\Http\Controllers\AdmissionController;
+use App\Http\Controllers\AdmissionsExportController;
+use App\Http\Controllers\DashboardController;
+
 
 Route::inertia('/', 'welcome')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::inertia('dashboard', 'dashboard')->name('dashboard');
+           Route::get('dashboard', DashboardController::class)
+    ->middleware(['auth', 'verified', 'permission:dashboard.view'])
+    ->name('dashboard');
 
     Route::get('classes', [ClassRoomController::class, 'index'])
         ->middleware('permission:classes.view')
@@ -57,13 +63,37 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('academic-years/{academicYear}/current', [AcademicYearController::class, 'setCurrent']);
     });
 
+    Route::get('admissions', [AdmissionController::class, 'index'])
+    ->middleware('permission:admissions.view')->name('admissions.index');
+Route::get('admissions/export', AdmissionsExportController::class)
+    ->middleware('permission:admissions.export')->name('admissions.export');
+
+Route::middleware('permission:admissions.manage')->group(function () {
+    Route::get('admissions/create', [AdmissionController::class, 'create'])->name('admissions.create');
+    Route::post('admissions', [AdmissionController::class, 'store'])->name('admissions.store');
+    Route::get('admissions/{applicant}/edit', [AdmissionController::class, 'edit'])->name('admissions.edit');
+    Route::put('admissions/{applicant}', [AdmissionController::class, 'update'])->name('admissions.update');
+    Route::delete('admissions/{applicant}', [AdmissionController::class, 'destroy'])->name('admissions.destroy');
+});
+
+Route::post('admissions/{applicant}/promote', [AdmissionController::class, 'promote'])
+    ->middleware('permission:admissions.promote')->name('admissions.promote');
+
 Route::middleware('permission:alumni.view')->group(function () {
     Route::get('alumni', [AlumniController::class, 'index'])->name('alumni.index');
     Route::get('alumni/{academicYear}/{branch}', [AlumniController::class, 'show'])->name('alumni.show');
     Route::get('alumni/{academicYear}/{branch}/export', AlumniExportController::class)
         ->middleware('permission:learners.export')->name('alumni.export');
+
+
 });
 
+
+
+Route::get('admissions', [AdmissionController::class, 'index'])->name('admissions.index');
+Route::get('admissions/{admission}', [AdmissionController::class, 'show'])->name('admissions.show');
+Route::post('admissions/{admission}/accept', [AdmissionController::class, 'accept'])
+    ->middleware('permission:admissions.accept')->name('admissions.accept');
 
 });
 

@@ -36,8 +36,8 @@ class AcademicYearController extends Controller
             ])->values(),
         ])->values();
 
-        // A year can be a rollover target only while it is empty and not the current year.
-        $targets = $rows->filter(fn ($y) => ! $y['is_current'] && $y['learners'] === 0)
+        // Any year except the current one can be a rollover target. Learners already enrolled in it are skipped.
+        $targets = $rows->filter(fn ($y) => ! $y['is_current'])
             ->map(fn ($y) => ['id' => $y['id'], 'name' => $y['name']])
             ->values();
 
@@ -125,6 +125,7 @@ class AcademicYearController extends Controller
         return redirect()->route('academic-years.index')->with(
             'success',
             "Rollover complete: {$result['promoted']} learners moved to {$to->name}, {$result['graduated']} graduated."
+            .($result['skipped'] ? " {$result['skipped']} were already enrolled in {$to->name} and were left unchanged." : '')
         );
     }
 }

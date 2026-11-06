@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { BookOpen, BusFront, FolderGit2, GraduationCap, LayoutGrid, UsersRound, BrainCog   } from 'lucide-react';
+import { BookOpen, BusFront, FolderGit2, GraduationCap, LayoutGrid, UsersRound, BrainCog, UserPlus, UserRoundCog, FolderCog  } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
@@ -40,13 +40,20 @@ const mainNavItems: NavItem[] = [
        {
         title: 'Academic Years',
         href: '/academic-years',
-        icon: BrainCog,
+        icon: FolderCog,
     },
 
        {
         title: 'Alumni',
         href: '/alumni',
         icon: UsersRound,
+    },
+
+    
+       {
+        title: 'Admissions',
+        href: '/admissions',
+        icon: UserPlus,
     }
 
 

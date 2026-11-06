@@ -264,7 +264,7 @@ export default function AcademicYearsIndex({ years, currentYear, targets, target
                             <Label>Roll over into</Label>
                             <Select value={targetYearId ? String(targetYearId) : ''} onValueChange={choosePreviewYear}>
                                 <SelectTrigger className="w-full">
-                                    <SelectValue placeholder={targets.length ? 'Select a year' : 'Create an empty year first'} />
+                                    <SelectValue placeholder={targets.length ? 'Select a year' : 'Create a new year first'} />
                                 </SelectTrigger>
                                 <SelectContent>
                                     {targets.map((t) => (

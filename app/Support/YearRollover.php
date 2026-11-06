@@ -16,6 +16,8 @@ use Illuminate\Validation\ValidationException;
  *  - Active learners move to the same stream of the next grade in the new year.
  *  - Active learners in a branch's final grade become "graduated" (alumni) in the old year.
  *  - Inactive and transferred learners are left behind in the old year.
+ *  - Learners who already have an enrollment in the new year (for example, applicants
+ *    admitted early) are skipped and left exactly as they are.
  *
  * plan() only reads. execute() writes everything inside one transaction.
  */
@@ -84,18 +86,12 @@ class YearRollover
         ];
     }
 
-    /** @return array{promoted: int, graduated: int} */
+    /** @return array{promoted: int, graduated: int, skipped: int} */
     public function execute(AcademicYear $from, AcademicYear $to, bool $makeCurrent): array
     {
         return DB::transaction(function () use ($from, $to, $makeCurrent) {
             // Lock both years so two people cannot run a rollover at the same time.
             AcademicYear::whereIn('id', [$from->id, $to->id])->lockForUpdate()->get();
-
-            if (Enrollment::where('academic_year_id', $to->id)->exists()) {
-                throw ValidationException::withMessages([
-                    'target_year_id' => "{$to->name} already has learners, so it cannot be the rollover target.",
-                ]);
-            }
 
             $plan = $this->plan($from);
 
@@ -108,12 +104,13 @@ class YearRollover
             $lastTerm = Term::where('academic_year_id', $from->id)->orderByDesc('number')->first();
             $promoted = 0;
             $graduated = 0;
+            $skipped = 0;
 
             Enrollment::query()
                 ->where('academic_year_id', $from->id)
                 ->where('status', 'active')
                 ->with('activities:id')
-                ->chunkById(200, function (Collection $chunk) use ($plan, $to, $lastTerm, &$promoted, &$graduated) {
+                ->chunkById(200, function (Collection $chunk) use ($plan, $to, $lastTerm, &$promoted, &$graduated, &$skipped) {
                     foreach ($chunk as $e) {
                         $dest = $plan['map'][$e->class_id];
 
@@ -124,6 +121,11 @@ class YearRollover
                                 'status_changed_at' => now()->toDateString(),
                             ]);
                             $graduated++;
+                            continue;
+                        }
+
+                        if (Enrollment::where('learner_id', $e->learner_id)->where('academic_year_id', $to->id)->exists()) {
+                            $skipped++;
                             continue;
                         }
 
@@ -146,7 +148,7 @@ class YearRollover
                 $this->makeCurrent($to);
             }
 
-            return ['promoted' => $promoted, 'graduated' => $graduated];
+            return ['promoted' => $promoted, 'graduated' => $graduated, 'skipped' => $skipped];
         });
     }
 
