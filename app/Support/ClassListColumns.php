@@ -79,6 +79,16 @@ class ClassListColumns
                 'label' => 'Status', 'option' => 'Status',
                 'value' => fn (Enrollment $e) => ucfirst($e->status),
             ],
+
+            'admission_date' => [
+                'label' => 'Admission Date', 'option' => 'Admission date',
+                'value' => fn (Enrollment $e) => $e->learner->date_of_admission?->format('d/m/Y'),
+            ],
+
+            'branch' => [
+                'label' => 'Branch', 'option' => 'Branch',
+                'value' => fn (Enrollment $e) => $e->branch->name,
+            ],
         ];
     }
 

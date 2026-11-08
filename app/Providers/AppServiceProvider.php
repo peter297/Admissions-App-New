@@ -5,6 +5,7 @@ namespace App\Providers;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -15,7 +16,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+       
     }
 
     /**
@@ -23,6 +24,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Gate::before(fn ($user) => $user->hasRole('Super Admin') ? true : null);
         $this->configureDefaults();
     }
 

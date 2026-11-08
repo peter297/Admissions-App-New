@@ -24,7 +24,7 @@ class LearnerController extends Controller
     private const LEARNER_FIELDS = [
         'full_name', 'assessment_number', 'admission_number', 'gender',
         'date_of_birth', 'birth_certificate_number', 'nationality',
-        'kemis_code', 'contact_person',
+        'kemis_code', 'contact_person', 'admission_date',
     ];
 
     /* ---------------------------------------------------------------
@@ -39,6 +39,7 @@ class LearnerController extends Controller
             'full_name' => '',
             'assessment_number' => '',
             'admission_number' => '',
+            'admission_date' => now()->toDateString(),
             'gender' => '',
             'date_of_birth' => '',
             'birth_certificate_number' => '',
@@ -52,6 +53,7 @@ class LearnerController extends Controller
             'status' => 'active',
             'status_changed_term_id' => '',
             'status_note' => '',
+            'status_changed_at' => '',
         ], route('learners.store', $classRoom), AcademicYear::where('is_current', true)->first());
     }
 
@@ -60,7 +62,7 @@ class LearnerController extends Controller
         $this->authorizeClass($request->user(), $classRoom);
 
         $year = AcademicYear::where('is_current', true)->firstOrFail();
-        $data = $request->validate($this->rules($classRoom, null, $year->id));
+        $data = $request->validate($this->rules($classRoom, null, $year->id), $this->messages());
 
         $target = ClassRoom::findOrFail($data['class_id']);
 
@@ -74,7 +76,7 @@ class LearnerController extends Controller
                 'branch_id' => $target->branch_id,
                 'status' => $data['status'],
                 'status_changed_term_id' => $data['status'] === 'active' ? null : ($data['status_changed_term_id'] ?? null),
-                'status_changed_at' => $data['status'] === 'active' ? null : now()->toDateString(),
+                'status_changed_at' => $data['status'] === 'active' ? null : ($data['status_changed_at'] ?? now()->toDateString()),
                 'status_note' => $data['status'] === 'active' ? null : ($data['status_note'] ?? null),
                 'takes_lunch' => $data['takes_lunch'],
                 'transport_route_id' => $data['transport_route_id'] ?? null,
@@ -104,6 +106,7 @@ class LearnerController extends Controller
             'full_name' => $l->full_name,
             'assessment_number' => $l->assessment_number ?? '',
             'admission_number' => $l->admission_number,
+            'admission_date' => $l->admission_date?->format('Y-m-d') ?? '',
             'gender' => $l->gender,
             'date_of_birth' => $l->date_of_birth->format('Y-m-d'),
             'birth_certificate_number' => $l->birth_certificate_number ?? '',
@@ -117,6 +120,7 @@ class LearnerController extends Controller
             'status' => $enrollment->status,
             'status_changed_term_id' => (string) ($enrollment->status_changed_term_id ?? ''),
             'status_note' => $enrollment->status_note ?? '',
+            'status_changed_at' => $enrollment->status_changed_at?->format('Y-m-d') ?? '',
         ], route('learners.update', $enrollment), $enrollment->academicYear);
     }
 
@@ -126,7 +130,8 @@ class LearnerController extends Controller
 
         $classRoom = $enrollment->classRoom;
         $data = $request->validate(
-            $this->rules($classRoom, $enrollment->learner, $enrollment->academic_year_id)
+            $this->rules($classRoom, $enrollment->learner, $enrollment->academic_year_id),
+            $this->messages()
         );
 
         $target = ClassRoom::findOrFail($data['class_id']);
@@ -146,7 +151,7 @@ class LearnerController extends Controller
                 'status_changed_term_id' => $active ? null : ($data['status_changed_term_id'] ?? null),
                 'status_changed_at' => $active
                     ? null
-                    : ($statusChanged ? now()->toDateString() : $enrollment->status_changed_at),
+                    : ($data['status_changed_at'] ?? ($statusChanged ? now()->toDateString() : $enrollment->status_changed_at)),
                 'status_note' => $active ? null : ($data['status_note'] ?? null),
             ]);
 
@@ -213,6 +218,7 @@ class LearnerController extends Controller
                 Rule::unique('learners', 'assessment_number')->ignore($learner?->id)],
             'admission_number' => ['required', 'string', 'max:50',
                 Rule::unique('learners', 'admission_number')->ignore($learner?->id)],
+            'admission_date' => ['nullable', 'date', 'before_or_equal:today'],
             'gender' => ['required', Rule::in(['male', 'female'])],
             'date_of_birth' => ['required', 'date', 'before:today'],
             'birth_certificate_number' => ['nullable', 'string', 'max:50'],
@@ -233,9 +239,19 @@ class LearnerController extends Controller
             'nullable', 'required_unless:status,active',
             Rule::exists('terms', 'id')->where('academic_year_id', $yearId),
         ];
-        $rules['status_note'] = ['nullable', 'string', 'max:1000'];
+        $rules['status_note'] = ['required_unless:status,active', 'nullable', 'string', 'max:1000'];
+        $rules['status_changed_at'] = ['required_unless:status,active', 'nullable', 'date', 'before_or_equal:today'];
 
         return $rules;
+    }
+
+    private function messages(): array
+    {
+        return [
+            'status_note.required_unless' => 'Please give the reason the learner left.',
+            'status_changed_at.required_unless' => 'Please enter the date the learner left.',
+            'status_changed_term_id.required_unless' => 'Please choose the term the learner left in.',
+        ];
     }
 
     private function authorizeClass(User $user, ClassRoom $classRoom): void

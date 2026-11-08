@@ -13,10 +13,13 @@ class Learner extends Model
     protected $fillable = [
         'full_name', 'assessment_number', 'admission_number', 'gender',
         'date_of_birth', 'birth_certificate_number', 'nationality',
-        'kemis_code', 'contact_person',
+        'kemis_code', 'contact_person', 'date_of_admission',
     ];
 
-    protected $casts = ['date_of_birth' => 'date'];
+    protected $casts = [
+        'date_of_birth' => 'date',
+        'date_of_admission' => 'date',
+    ];
 
     public function enrollments(): HasMany
     {

@@ -10,14 +10,23 @@ use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 
 /**
- * Reads an uploaded class list and checks every row. It never writes to the
+ * Reads an uploaded learner file and checks every row. It never writes to the
  * database: the controller decides what to do with the result.
+ *
+ * Without $lookups it reads a single-class file. With $lookups it also reads the
+ * Branch, Class, Route, Bus and Status columns, for a whole-school file.
  */
 class ClassListImporter
 {
     public const MAX_ROWS = 1000;
 
     public const REQUIRED = ['full_name', 'admission_number', 'gender', 'date_of_birth'];
+
+    /** The columns that belong to the learner record itself. */
+    public const LEARNER_FIELDS = [
+        'full_name', 'assessment_number', 'admission_number', 'admission_date', 'gender',
+        'date_of_birth', 'birth_certificate_number', 'nationality', 'kemis_code', 'contact_person',
+    ];
 
     private const LABELS = [
         'full_name' => 'Name',
@@ -30,6 +39,7 @@ class ClassListImporter
     private const ALIASES = [
         'full_name' => ['name', 'fullname', 'fullnames', 'learnername'],
         'admission_number' => ['admissionno', 'admissionnumber', 'admno'],
+        'admission_date' => ['admissiondate', 'dateofadmission', 'dateadmitted', 'admittedon'],
         'assessment_number' => ['assessmentno', 'assessmentnumber'],
         'nationality' => ['citizenship', 'nationality'],
         'gender' => ['gender', 'sex'],
@@ -38,10 +48,18 @@ class ClassListImporter
         'birth_certificate_number' => ['birthcertentryno', 'birthcertificateentrynumber', 'birthcertificatenumber', 'birthcertno', 'birthcertificateno'],
         'contact_person' => ['contactperson', 'parentguardian', 'guardian'],
         'lunch' => ['lunch', 'schoollunch'],
+        // whole-school columns
+        'branch' => ['branch', 'campus'],
+        'class' => ['class', 'classname', 'currentclass'],
+        'grade' => ['grade', 'gradelevel'],
+        'stream' => ['stream'],
+        'status' => ['status', 'learnerstatus'],
+        'route' => ['transportroute', 'route'],
+        'bus' => ['bus', 'busplate', 'busnumberplate'],
     ];
 
     /** @return array{fatal: ?string, records: array, errors: array} */
-    public function read(UploadedFile $file): array
+    public function read(UploadedFile $file, ?LearnerImportLookups $lookups = null, int $maxRows = self::MAX_ROWS): array
     {
         $reader = new class implements ToArray {
             public function array(array $array): void
@@ -64,19 +82,23 @@ class ClassListImporter
             return $this->fatal('These required columns are missing: '.implode(', ', $labels).'.');
         }
 
+        if ($lookups && ! isset($map['class']) && ! (isset($map['grade']) && isset($map['stream']))) {
+            return $this->fatal('The Class column is missing. A whole-school file needs a Class column (for example "Grade 3 Blue"), or separate Grade and Stream columns.');
+        }
+
         $parsed = [];
         for ($i = $headerRow + 1; $i < count($rows); $i++) {
             if ($this->isBlank($rows[$i])) {
                 continue;
             }
-            $parsed[] = $this->parseRow($rows[$i], $map, $i + 1); // $i + 1 = the row number Excel shows
+            $parsed[] = $this->parseRow($rows[$i], $map, $i + 1, $lookups); // $i + 1 = the row number Excel shows
         }
 
         if (count($parsed) === 0) {
             return $this->fatal('The file has no learners under the column headings.');
         }
-        if (count($parsed) > self::MAX_ROWS) {
-            return $this->fatal('The file has more than '.self::MAX_ROWS.' learners. Please split it into smaller files.');
+        if (count($parsed) > $maxRows) {
+            return $this->fatal("The file has more than {$maxRows} learners. Please split it into smaller files.");
         }
 
         $parsed = $this->checkDuplicates($parsed);
@@ -106,6 +128,7 @@ class ClassListImporter
                 foreach (self::ALIASES as $key => $aliases) {
                     if (! isset($map[$key]) && in_array($norm, $aliases, true)) {
                         $map[$key] = $col;
+                        break; // one heading belongs to one field
                     }
                 }
             }
@@ -121,7 +144,7 @@ class ClassListImporter
     /* ---------------------------------------------------------------
      |  One row
      * ------------------------------------------------------------- */
-    private function parseRow(array $row, array $map, int $rowNumber): array
+    private function parseRow(array $row, array $map, int $rowNumber, ?LearnerImportLookups $lookups): array
     {
         $cell = fn (string $key) => isset($map[$key]) ? ($row[$map[$key]] ?? null) : null;
         $errors = [];
@@ -159,22 +182,50 @@ class ClassListImporter
             $errors[] = 'Date of Birth does not look right';
         }
 
-        return [
-            'row' => $rowNumber,
-            'errors' => $errors,
-            'data' => [
-                'full_name' => $name,
-                'assessment_number' => $assessment,
-                'admission_number' => $admission,
-                'gender' => $gender,
-                'date_of_birth' => $dob,
-                'birth_certificate_number' => $birthCert,
-                'nationality' => $nationality,
-                'kemis_code' => $kemis,
-                'contact_person' => $contact,
-                'takes_lunch' => (bool) $lunch,
-            ],
+        // Admission date is optional. Old records often do not have one.
+        $admissionDate = null;
+        $rawAdmissionDate = $cell('admission_date');
+        if ($rawAdmissionDate !== null && trim((string) $rawAdmissionDate) !== '') {
+            $admissionDate = $this->parseDate($rawAdmissionDate);
+            if (! $admissionDate) {
+                $errors[] = 'Admission date is not a valid date (use dd/mm/yyyy)';
+            } elseif ($admissionDate > now()->toDateString()) {
+                $errors[] = 'Admission date is in the future';
+            } elseif ($dob && $admissionDate < $dob) {
+                $errors[] = 'Admission date is before the date of birth';
+            }
+        }
+
+        $data = [
+            'full_name' => $name,
+            'assessment_number' => $assessment,
+            'admission_number' => $admission,
+            'admission_date' => $admissionDate,
+            'gender' => $gender,
+            'date_of_birth' => $dob,
+            'birth_certificate_number' => $birthCert,
+            'nationality' => $nationality,
+            'kemis_code' => $kemis,
+            'contact_person' => $contact,
+            'takes_lunch' => (bool) $lunch,
         ];
+
+        // Whole-school files also say where each learner belongs.
+        if ($lookups) {
+            [$ids, $problems] = $lookups->resolve([
+                'branch' => $this->text($cell('branch')),
+                'class' => $this->text($cell('class')),
+                'grade' => $this->text($cell('grade')),
+                'stream' => $this->text($cell('stream')),
+                'status' => $this->text($cell('status')),
+                'route' => $this->text($cell('route')),
+                'bus' => $this->text($cell('bus')),
+            ]);
+            $data += $ids;
+            $errors = array_merge($errors, $problems);
+        }
+
+        return ['row' => $rowNumber, 'errors' => $errors, 'data' => $data];
     }
 
     /* ---------------------------------------------------------------
@@ -206,8 +257,12 @@ class ClassListImporter
             $values = array_values(array_filter(array_column(array_column($parsed, 'data'), $field)));
             if (! $values) continue;
 
-            $existing = array_flip(array_map('mb_strtolower',
-                Learner::withTrashed()->whereIn($field, $values)->pluck($field)->all()));
+            $existing = [];
+            foreach (array_chunk($values, 1000) as $chunk) {
+                foreach (Learner::withTrashed()->whereIn($field, $chunk)->pluck($field) as $found) {
+                    $existing[mb_strtolower($found)] = true;
+                }
+            }
 
             foreach ($parsed as $i => $p) {
                 $value = $p['data'][$field];

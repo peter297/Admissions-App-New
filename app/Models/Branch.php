@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Branch extends Model
 {
-   protected $fillable = ['name','code','final_grade_level_id'];
+   protected $fillable = ['name','code','final_grade_level_id', 'first_grade_level_id'];
 
    public function classRooms()
    {

@@ -12,9 +12,25 @@ use App\Http\Controllers\AlumniExportController;
 use App\Http\Controllers\AdmissionController;
 use App\Http\Controllers\AdmissionsExportController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\LearnerSearchController;
+use App\Http\Controllers\SchoolImportController;
+use App\Http\Controllers\Settings\ClassSettingsController;
+use App\Http\Controllers\Settings\RoleController;
+use App\Http\Controllers\Settings\UserController;
+use App\Http\Controllers\HistoryController;
+use App\Http\Controllers\ReportController;
+use Inertia\Inertia;
+
+// Route::inertia('/', 'welcome')->name('home');
 
 
-Route::inertia('/', 'welcome')->name('home');
+Route::get('/', function () {
+    if (auth()->check()) {
+        return redirect()->route('dashboard');
+    }
+    return redirect()->route('login');
+});
+
 
 Route::middleware(['auth', 'verified'])->group(function () {
            Route::get('dashboard', DashboardController::class)
@@ -94,6 +110,66 @@ Route::get('admissions', [AdmissionController::class, 'index'])->name('admission
 Route::get('admissions/{admission}', [AdmissionController::class, 'show'])->name('admissions.show');
 Route::post('admissions/{admission}/accept', [AdmissionController::class, 'accept'])
     ->middleware('permission:admissions.accept')->name('admissions.accept');
+
+
+//  Route::get('php-check', fn () => response()->json([
+//     'php_ini_file' => php_ini_loaded_file(),
+//     'upload_tmp_dir' => ini_get('upload_tmp_dir'),
+//     'system_temp_dir' => sys_get_temp_dir(),
+//     'system_temp_writable' => is_writable(sys_get_temp_dir()),
+//     'file_uploads' => ini_get('file_uploads'),
+//     'upload_max_filesize' => ini_get('upload_max_filesize'),
+//     'post_max_size' => ini_get('post_max_size'),
+// ]));
+
+Route::get('learners', [LearnerSearchController::class, 'index'])
+    ->middleware('permission:learners.view')->name('learners.search');
+
+    Route::middleware('permission:learners.import')->group(function () {
+    Route::get('import', [SchoolImportController::class, 'index'])->name('import.index');
+    Route::get('import/template', [SchoolImportController::class, 'template'])->name('import.template');
+    Route::post('import', [SchoolImportController::class, 'store'])->name('import.store');
+});
+
+// Route::get('settings', fn () => redirect(
+//     auth()->user()->hasRole('Super Admin') ? '/settings/roles' : '/settings/classes'
+// ))->middleware('permission:settings.manage');
+
+//  Roles and users: Super Admin ONLY, because they can grant any permission to anyone.
+Route::middleware('role:Super Admin')->prefix('settings')->group(function () {
+    Route::get('roles', [RoleController::class, 'index']);
+    Route::post('roles', [RoleController::class, 'store']);
+    Route::put('roles/{role}', [RoleController::class, 'update']);
+    Route::delete('roles/{role}', [RoleController::class, 'destroy']);
+
+    Route::get('users', [UserController::class, 'index']);
+    Route::post('users', [UserController::class, 'store']);
+    Route::put('users/{user}', [UserController::class, 'update']);
+    Route::delete('users/{user}', [UserController::class, 'destroy']);
+});
+
+// Classes and streams: anyone with the settings.manage permission.
+Route::middleware('permission:settings.manage')->prefix('settings')->group(function () {
+    Route::get('classes', [ClassSettingsController::class, 'index']);
+    Route::post('streams', [ClassSettingsController::class, 'storeStream']);
+    Route::put('streams/{stream}', [ClassSettingsController::class, 'updateStream']);
+    Route::delete('streams/{stream}', [ClassSettingsController::class, 'destroyStream']);
+    Route::post('classes', [ClassSettingsController::class, 'storeClass']);
+    Route::delete('classes/{classRoom}', [ClassSettingsController::class, 'destroyClass']);
+    Route::put('branches/{branch}/final-grade', [ClassSettingsController::class, 'updateFinalGrade']);
+    Route::put('branches/{branch}/first-grade', [ClassSettingsController::class, 'updateFirstGrade']);
+    Route::post('branches/{branch}/fill-classes', [ClassSettingsController::class, 'fillClasses']);
+});
+
+Route::middleware('permission:history.view')->group(function () {
+    Route::get('history', [HistoryController::class, 'index'])->name('history.index');
+    Route::get('history/export', [HistoryController::class, 'export'])->name('history.export');
+});
+
+Route::middleware('permission:reports.view')->group(function () {
+    Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
+    Route::get('reports/learners/pdf', [ReportController::class, 'pdf'])->name('reports.learners.pdf');
+});
 
 });
 

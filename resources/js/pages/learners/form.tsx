@@ -21,6 +21,7 @@ type FormValues = {
     full_name: string;
     assessment_number: string;
     admission_number: string;
+    admission_date: string;
     gender: string;
     date_of_birth: string;
     birth_certificate_number: string;
@@ -34,6 +35,7 @@ type FormValues = {
     status: string;
     status_changed_term_id: string;
     status_note: string;
+    status_changed_at: string;
 };
 
 type Props = {
@@ -143,6 +145,14 @@ export default function LearnerForm({
                         <Input
                             value={data.admission_number}
                             onChange={(e) => setData('admission_number', e.target.value)}
+                        />
+                    </Field>
+
+                    <Field label="Admission date" error={errors.admission_date}>
+                        <Input
+                            type="date"
+                            value={data.admission_date}
+                            onChange={(e) => setData('admission_date', e.target.value)}
                         />
                     </Field>
 
@@ -257,7 +267,20 @@ export default function LearnerForm({
                     </Field>
 
                     <Field label="Status" error={errors.status}>
-                        <Select value={data.status} onValueChange={(v) => setData('status', v)}>
+                        <Select
+                            value={data.status}
+                            onValueChange={(v) =>
+                                // Leaving today is the usual case, so the date starts as today.
+                                setData((prev) => ({
+                                    ...prev,
+                                    status: v,
+                                    status_changed_at:
+                                        v !== 'active' && !prev.status_changed_at
+                                            ? new Date().toLocaleDateString('en-CA')
+                                            : prev.status_changed_at,
+                                }))
+                            }
+                        >
                             <SelectTrigger className="w-full">
                                 <SelectValue />
                             </SelectTrigger>
@@ -290,7 +313,7 @@ export default function LearnerForm({
                 {/* Term and note appear only when the status is not Active. */}
                 {data.status !== 'active' && (
                     <div className="grid gap-4 rounded-lg border p-4 sm:grid-cols-2 lg:grid-cols-3">
-                        <Field label="Effective term" error={errors.status_changed_term_id}>
+                        <Field label="Term left in" error={errors.status_changed_term_id}>
                             <Select
                                 value={data.status_changed_term_id}
                                 onValueChange={(v) => setData('status_changed_term_id', v)}
@@ -308,8 +331,16 @@ export default function LearnerForm({
                             </Select>
                         </Field>
 
-                        <div className="lg:col-span-2">
-                            <Field label="Note (optional)" error={errors.status_note}>
+                        <Field label="Date left" error={errors.status_changed_at}>
+                            <Input
+                                type="date"
+                                value={data.status_changed_at}
+                                onChange={(e) => setData('status_changed_at', e.target.value)}
+                            />
+                        </Field>
+
+                        <div className="col-span-full">
+                            <Field label="Reason for leaving" error={errors.status_note}>
                                 <Textarea
                                     value={data.status_note}
                                     onChange={(e) => setData('status_note', e.target.value)}

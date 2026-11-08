@@ -44,6 +44,16 @@ class Enrollment extends Model
         return $this->belongsTo(Bus::class);
     }
 
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
+    }
+
+    public function statusTerm(): BelongsTo
+    {
+        return $this->belongsTo(Term::class, 'status_changed_term_id');
+    }
+
     public function activities(): BelongsToMany
     {
         return $this->belongsToMany(Activity::class, 'activity_enrollment');
